@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { cleanBookTitle } from "@/lib/firestore";
 
 export default function BookCard({ book }) {
-  const { id, title, uploadedAt, pageCount, author } = book;
+  const { id, uploadedAt, pageCount, author, coverUrl } = book;
+  const title = cleanBookTitle(book.title);
 
   // Genera un color de portada basado en el título
   const coverColors = [
@@ -37,15 +39,18 @@ export default function BookCard({ book }) {
 
   return (
     <Link href={`/read/${id}`} className="book-card" id={`book-card-${id}`}>
-      {/* Portada simulada */}
+      {/* Portada simulada o Real */}
       <div
         className="book-cover"
         style={{
-          background: `linear-gradient(145deg, ${from}, ${to})`,
+          background: coverUrl ? "#fff" : `linear-gradient(145deg, ${from}, ${to})`,
+          backgroundImage: coverUrl ? `url(${coverUrl})` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
-        <span className="book-cover-initial">{initial}</span>
-        <div className="book-spine" style={{ background: from }} />
+        {!coverUrl && <span className="book-cover-initial">{initial}</span>}
+        <div className="book-spine" style={{ background: coverUrl ? "rgba(0,0,0,0.1)" : from }} />
       </div>
 
       {/* Info */}
@@ -61,3 +66,4 @@ export default function BookCard({ book }) {
     </Link>
   );
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -28,6 +28,37 @@ function UploadContent() {
   const [statusMsg, setStatusMsg] = useState("");
   const [savedBookId, setSavedBookId] = useState(null);
   const [error, setError] = useState(null);
+
+  /* ── Animación de progreso ──────────────────────────────────────── */
+  useEffect(() => {
+    let interval;
+    let msgInterval;
+    if (status === "uploading") {
+      // Incrementar el progreso poco a poco (asintótico hacia 90%)
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev;
+          const increment = (90 - prev) * 0.05;
+          return prev + (increment > 0.1 ? increment : 0.1);
+        });
+      }, 500);
+      
+      // Cambiar el mensaje para dar feedback continuo
+      msgInterval = setInterval(() => {
+        setStatusMsg((prev) => {
+          if (prev.includes("Extrayendo texto")) return "Analizando estructura...";
+          if (prev.includes("Analizando estructura")) return "Generando capítulos...";
+          if (prev.includes("Generando capítulos")) return "Buscando portadas y metadatos...";
+          return "Extrayendo texto del PDF...";
+        });
+      }, 4000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+      if (msgInterval) clearInterval(msgInterval);
+    };
+  }, [status]);
 
   /* ── Drag & Drop ────────────────────────────────────────────────── */
   const handleDragOver = useCallback((e) => {
@@ -64,17 +95,16 @@ function UploadContent() {
     if (!file || !user) return;
     setError(null);
     setStatus("uploading");
-    setProgress(20);
-    setStatusMsg("Enviando PDF al procesador...");
+    setProgress(5);
+    setStatusMsg("Iniciando procesamiento...");
 
     try {
       // 1. Enviar al backend con el token Firebase en el header (via lib/api.js)
-      setProgress(35);
       const bookData = await extractPdf(file);
 
       // 2. Guardar en Firestore
       setStatus("saving");
-      setProgress(80);
+      setProgress(95);
       setStatusMsg("Guardando en la biblioteca...");
 
       const bookId = await saveBook(bookData, user.uid);

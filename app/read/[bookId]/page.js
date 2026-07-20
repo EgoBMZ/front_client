@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBook, getProgress, saveProgress } from "@/lib/firestore";
+import { getBook, getProgress, saveProgress, cleanBookTitle } from "@/lib/firestore";
 
 export default function ReaderPage() {
   return (
@@ -137,6 +137,7 @@ function ReaderContent() {
           return;
         }
 
+        bookData.title = cleanBookTitle(bookData.title);
         setBook(bookData);
 
         const elems = bookData.elements || [];
@@ -284,9 +285,14 @@ function ReaderContent() {
         <div className="sidebar-book-info">
           <div
             className="sidebar-book-cover"
-            style={{ background: `linear-gradient(145deg, ${coverFrom}, ${coverTo})` }}
+            style={{
+              background: book.coverUrl ? "#fff" : `linear-gradient(145deg, ${coverFrom}, ${coverTo})`,
+              backgroundImage: book.coverUrl ? `url(${book.coverUrl})` : "none",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
           >
-            {book.title?.charAt(0).toUpperCase() || "L"}
+            {!book.coverUrl && (book.title?.charAt(0).toUpperCase() || "L")}
           </div>
           <h2 className="sidebar-book-title">{book.title}</h2>
           {book.author && <p style={{ fontSize: "0.8rem", fontStyle: "italic", color: "var(--ink-muted)" }}>{book.author}</p>}
