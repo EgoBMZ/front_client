@@ -978,6 +978,149 @@ img { max-width: 100%; display: block; }
   100% { background-position: 200% 0; }
 }
 
+/* ─── Narrator Bar ───────────────────────────────────────────────── */
+.narrator-bar {
+  margin: 0 16px 0;
+  border-radius: var(--radius-md);
+  background: var(--cream-dark);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: all var(--transition);
+}
+.narrator-bar--active {
+  background: rgba(232, 86, 58, 0.06);
+  border-color: rgba(232, 86, 58, 0.25);
+}
+
+.narrator-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.narrator-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--white);
+  color: var(--ink-light);
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.narrator-btn:hover { background: var(--coral); color: #fff; transform: scale(1.05); }
+.narrator-btn--play { background: var(--coral); color: #fff; }
+.narrator-btn--play:hover { background: var(--coral-dark); }
+.narrator-btn--playing { background: var(--ink); color: #fff; }
+.narrator-btn--playing:hover { background: var(--coral-dark); color: #fff; }
+.narrator-btn--settings { border-radius: var(--radius-sm); width: 30px; height: 30px; background: transparent; box-shadow: none; }
+.narrator-btn--settings:hover { background: var(--border); color: var(--ink); transform: none; }
+.narrator-btn--settings-open { background: rgba(232, 86, 58, 0.1); color: var(--coral); }
+
+.narrator-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.narrator-bar--active .narrator-label { color: var(--coral); }
+
+/* Narrator Settings Panel */
+.narrator-settings {
+  border-top: 1px solid var(--border);
+  padding: 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeInDown 0.15s ease-out;
+}
+
+.narrator-setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.narrator-setting-label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.narrator-setting-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--coral);
+  font-weight: 700;
+}
+
+.narrator-voices {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.narrator-voice-btn {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--ink-light);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+}
+.narrator-voice-btn:hover { border-color: var(--coral-light); color: var(--coral); background: rgba(232,86,58,0.04); }
+.narrator-voice-btn--active { border-color: var(--coral); background: rgba(232, 86, 58, 0.08); color: var(--coral); font-weight: 600; }
+
+.narrator-no-voices { font-size: 0.8rem; color: var(--ink-muted); font-style: italic; }
+
+.narrator-speed-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.narrator-speed-btn {
+  padding: 7px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--ink-light);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+.narrator-speed-btn:hover { border-color: var(--coral-light); color: var(--coral); background: rgba(232,86,58,0.04); }
+.narrator-speed-btn--active { border-color: var(--coral); background: rgba(232, 86, 58, 0.12); color: var(--coral); font-weight: 700; }
+
+/* Sentence-level highlighting during narration */
+.narrator-sentence {
+  transition: background 0.12s ease, color 0.12s ease;
+  border-radius: 3px;
+  padding: 1px 2px;
+  margin: 0 -2px;
+}
+.narrator-sentence--active {
+  background: rgba(232, 86, 58, 0.18);
+  color: var(--ink);
+  box-shadow: 0 1px 0 rgba(232, 86, 58, 0.4);
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .reader-layout {
