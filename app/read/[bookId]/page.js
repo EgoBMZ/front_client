@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -139,10 +139,10 @@ function findPreferredVoice(voices) {
 // ─── Hook del narrador TTS ─────────────────────────────────────────────
 function useNarrator({ elements, activeElementId, setActiveElementId, activeChapterIndex, setActiveChapterIndex, chapters, user, bookId }) {
   const [isNarrating, setIsNarrating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [rate, setRate] = useState(1.0);
-  const [volume, setVolume] = useState(1.0);
   const [narratorSentenceIdx, setNarratorSentenceIdx] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -152,7 +152,6 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
   const currentSentenceIdxRef = useRef(0);
   // Refs para leer el valor más reciente dentro de closures sin recrear narrateElement
   const rateRef = useRef(rate);
-  const volumeRef = useRef(volume);
   const selectedVoiceRef = useRef(selectedVoice);
   const chaptersRef = useRef(chapters);
   // Flag para distinguir cambios de capítulo hechos por el narrador vs. el usuario
@@ -164,7 +163,6 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
 
   // Sincronizar refs con el state
   useEffect(() => { rateRef.current = rate; }, [rate]);
-  useEffect(() => { volumeRef.current = volume; }, [volume]);
   useEffect(() => { selectedVoiceRef.current = selectedVoice; }, [selectedVoice]);
   useEffect(() => { chaptersRef.current = chapters; }, [chapters]);
 
@@ -198,6 +196,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     narrationIdRef.current += 1;
     window.speechSynthesis.cancel();
     setIsNarrating(false);
+    setIsPaused(false);
     setNarratorSentenceIdx(null);
   }, []);
 
@@ -270,7 +269,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
       const utterance = new SpeechSynthesisUtterance(sentences[sentenceIdx]);
       utterance.lang = "es-MX";
       utterance.rate = rateRef.current;
-      utterance.volume = volumeRef.current;
+      utterance.volume = 1.0;
 
       const allVoices = window.speechSynthesis.getVoices();
       const voice = allVoices.find(v => v.name === selectedVoiceRef.current);
@@ -314,6 +313,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     window.speechSynthesis.cancel();
     narratingRef.current = true;
     setIsNarrating(true);
+    setIsPaused(false);
     narrationIdRef.current += 1;
     // Comenzar desde el elemento activo actual
     narrateElement(activeElementId, 0, narrationIdRef.current);
@@ -323,8 +323,10 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
   const pauseResume = useCallback(() => {
     if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
       window.speechSynthesis.pause();
+      setIsPaused(true);
     } else if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
+      setIsPaused(false);
     }
   }, []);
 
@@ -336,6 +338,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     window.speechSynthesis.cancel();
     narrationIdRef.current += 1;
     const newId = narrationIdRef.current;
+    setIsPaused(false);
     setTimeout(() => {
       if (narratingRef.current && newId === narrationIdRef.current) {
         narrateElement(elemIdx, 0, newId);
@@ -380,43 +383,44 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
       }));
 
   return {
-    isNarrating, voices: voiceOptions, selectedVoice, setSelectedVoice,
-    rate, setRate, volume, setVolume,
+    isNarrating, isPaused, voices: voiceOptions, selectedVoice, setSelectedVoice,
+    rate, setRate,
     narratorSentenceIdx, showSettings, setShowSettings,
     startNarrating, pauseResume, stopNarrating, jumpToElement,
   };
 }
 
 // ─── Panel de control del narrador ────────────────────────────────────
-function NarratorBar({ narrator }) {
+function NarratorBar({ narrator, bookTitle, chapterTitle, bookProgressPct, chapterProgressPct, remainingTimeStr }) {
   const {
-    isNarrating, voices, selectedVoice, setSelectedVoice,
-    rate, setRate, volume, setVolume,
+    isNarrating, isPaused, voices, selectedVoice, setSelectedVoice,
+    rate, setRate,
     showSettings, setShowSettings,
     startNarrating, pauseResume, stopNarrating,
   } = narrator;
 
-  const [isPaused, setIsPaused] = useState(false);
-
   const handlePlayPause = () => {
     if (!isNarrating) {
       startNarrating();
-      setIsPaused(false);
     } else {
       pauseResume();
-      setIsPaused(p => !p);
     }
   };
 
   const handleStop = () => {
     stopNarrating();
-    setIsPaused(false);
   };
 
   return (
     <div className={`narrator-bar ${isNarrating ? "narrator-bar--active" : ""}`}>
-      {/* Controles principales */}
-      <div className="narrator-controls">
+      {/* Columna Izquierda: Información del libro */}
+      <div className="narrator-info-col">
+        <div className="narrator-info-title" title={bookTitle}>{bookTitle}</div>
+        <div className="narrator-info-chapter" title={chapterTitle}>{chapterTitle}</div>
+      </div>
+
+      {/* Columna Central: Controles principales */}
+      <div className="narrator-controls-col">
         <button
           className={`narrator-btn narrator-btn--play ${isNarrating && !isPaused ? "narrator-btn--playing" : ""}`}
           onClick={handlePlayPause}
@@ -438,10 +442,6 @@ function NarratorBar({ narrator }) {
           </button>
         )}
 
-        <div className="narrator-label">
-          {isNarrating ? (isPaused ? "Pausado" : "Narrando...") : "Narrador"}
-        </div>
-
         <button
           className={`narrator-btn narrator-btn--settings ${showSettings ? "narrator-btn--settings-open" : ""}`}
           onClick={() => setShowSettings(s => !s)}
@@ -452,6 +452,25 @@ function NarratorBar({ narrator }) {
             <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
           </svg>
         </button>
+      </div>
+
+      {/* Columna Derecha: Estadísticas de progreso */}
+      <div className="narrator-stats-col">
+        <div className="narrator-stat-badge" title="Progreso del capítulo">
+          <span className="narrator-stat-icon">📖</span>
+          <span className="narrator-stat-label">Cap:</span>
+          <span className="narrator-stat-value">{chapterProgressPct}%</span>
+        </div>
+        <div className="narrator-stat-badge" title="Progreso total del libro">
+          <span className="narrator-stat-icon">📚</span>
+          <span className="narrator-stat-label">Libro:</span>
+          <span className="narrator-stat-value">{bookProgressPct}%</span>
+        </div>
+        <div className="narrator-stat-badge" title="Tiempo restante para finalizar el capítulo">
+          <span className="narrator-stat-icon">⏱️</span>
+          <span className="narrator-stat-label">Faltan:</span>
+          <span className="narrator-stat-value">{remainingTimeStr}</span>
+        </div>
       </div>
 
       {/* Panel de configuración */}
@@ -477,7 +496,7 @@ function NarratorBar({ narrator }) {
             </div>
           </div>
 
-          {/* Velocidad — botones predefinidos, aplica en tiempo real */}
+          {/* Velocidad */}
           <div className="narrator-setting-row">
             <label className="narrator-setting-label">Velocidad</label>
             <div className="narrator-speed-presets">
@@ -491,28 +510,6 @@ function NarratorBar({ narrator }) {
                   {preset.label}
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Volumen */}
-          <div className="narrator-setting-row">
-            <label className="narrator-setting-label">
-              Volumen
-              <span className="narrator-setting-value">{Math.round(volume * 100)}%</span>
-            </label>
-            <div className="narrator-slider-row">
-              <span className="narrator-slider-hint">🔇</span>
-              <input
-                id="narrator-volume-slider"
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={volume}
-                onChange={e => setVolume(parseFloat(e.target.value))}
-                className="narrator-slider"
-              />
-              <span className="narrator-slider-hint">🔊</span>
             </div>
           </div>
         </div>
@@ -542,6 +539,90 @@ function ReaderContent() {
     elements, activeElementId, setActiveElementId,
     activeChapterIndex, setActiveChapterIndex, chapters, user, bookId,
   });
+
+  // ── Sidebar Toggle State ──────────────────────────────────────────
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("reader-sidebar-collapsed") === "true";
+    }
+    return false;
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("reader-sidebar-collapsed", String(next));
+      return next;
+    });
+  };
+
+  // ── HUD Feedback Animation State ──────────────────────────────────
+  const [hudState, setHudState] = useState({ visible: false, type: "" });
+  const hudTimeoutRef = useRef(null);
+
+  const triggerHud = (type) => {
+    if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+    setHudState({ visible: true, type });
+    hudTimeoutRef.current = setTimeout(() => {
+      setHudState({ visible: false, type });
+    }, 1000);
+  };
+
+  const prevIsNarratingRef = useRef(narrator.isNarrating);
+  const prevIsPausedRef = useRef(narrator.isPaused);
+
+  useEffect(() => {
+    const prevIsNarrating = prevIsNarratingRef.current;
+    const prevIsPaused = prevIsPausedRef.current;
+
+    if (narrator.isNarrating && !prevIsNarrating) {
+      triggerHud("play");
+    } else if (!narrator.isNarrating && prevIsNarrating) {
+      triggerHud("stop");
+    } else if (narrator.isNarrating && prevIsNarrating) {
+      if (narrator.isPaused && !prevIsPaused) {
+        triggerHud("pause");
+      } else if (!narrator.isPaused && prevIsPaused) {
+        triggerHud("play");
+      }
+    }
+
+    prevIsNarratingRef.current = narrator.isNarrating;
+    prevIsPausedRef.current = narrator.isPaused;
+  }, [narrator.isNarrating, narrator.isPaused]);
+
+  // ── Spacebar play/pause shortcut ──────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space") {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable)) {
+          return;
+        }
+        e.preventDefault();
+        if (!narrator.isNarrating) {
+          narrator.startNarrating();
+        } else {
+          narrator.pauseResume();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [narrator]);
+
+  // ── Synchronize Active Chapter with Active Element ──────────────────
+  useEffect(() => {
+    if (chapters.length === 0) return;
+    for (let i = chapters.length - 1; i >= 0; i--) {
+      if (activeElementId >= chapters[i].startIndex) {
+        if (activeChapterIndex !== i) {
+          setActiveChapterIndex(i);
+        }
+        break;
+      }
+    }
+  }, [activeElementId, chapters, activeChapterIndex]);
 
   // ── Cargar libro y progreso ──────────────────────────────────────
   useEffect(() => {
@@ -635,11 +716,6 @@ function ReaderContent() {
 
 
 
-  // ── Cálculo de progreso exacto ─────────────────────────────────────
-  const progressPct = elements.length > 1
-    ? Math.min(100, Math.round((activeElementId / (elements.length - 1)) * 100))
-    : (elements.length === 1 ? 100 : 0);
-
   // ── Color de portada ──────────────────────────────────────────────
   const coverColors = [
     ["#E8563A", "#F4A261"], ["#2D6A4F", "#74C69D"], ["#264653", "#2A9D8F"],
@@ -647,6 +723,62 @@ function ReaderContent() {
   ];
   const colorIndex = bookId ? bookId.charCodeAt(0) % coverColors.length : 0;
   const [coverFrom, coverTo] = coverColors[colorIndex];
+
+  const currentChapter = chapters[activeChapterIndex] || { elements: [] };
+
+  // ── Estadísticas de Lectura (Por Palabras y Frases) ────────────────
+  const { chapterTotalWords, chapterWordsRead, chapterWordsRemaining, currentElementFraction } = useMemo(() => {
+    let totalWords = 0;
+    let wordsRead = 0;
+    let currentFraction = 0;
+
+    if (!currentChapter || !currentChapter.elements || currentChapter.elements.length === 0) {
+      return { chapterTotalWords: 0, chapterWordsRead: 0, chapterWordsRemaining: 0, currentElementFraction: 0 };
+    }
+
+    currentChapter.elements.forEach((el) => {
+      const text = (el.content || el.text || "").trim();
+      if (!text) return;
+
+      const isPastElement = el.originalIndex < activeElementId;
+      const isCurrentElement = el.originalIndex === activeElementId;
+
+      if (isPastElement) {
+        const words = text.split(/\s+/).filter(w => w.length > 0).length;
+        totalWords += words;
+        wordsRead += words;
+      } else if (isCurrentElement) {
+        const sentences = splitIntoSentences(text);
+        const sentenceIdx = narrator.isNarrating && narrator.narratorSentenceIdx !== null 
+          ? Math.min(narrator.narratorSentenceIdx, Math.max(0, sentences.length - 1))
+          : 0;
+
+        let wordsInElement = 0;
+        let wordsReadInElement = 0;
+
+        sentences.forEach((sentence, idx) => {
+          const words = sentence.split(/\s+/).filter(w => w.length > 0).length;
+          wordsInElement += words;
+          if (idx < sentenceIdx) {
+            wordsReadInElement += words;
+          }
+        });
+        
+        if (wordsInElement > 0) {
+          currentFraction = wordsReadInElement / wordsInElement;
+        }
+
+        totalWords += wordsInElement;
+        wordsRead += wordsReadInElement;
+      } else {
+        const words = text.split(/\s+/).filter(w => w.length > 0).length;
+        totalWords += words;
+      }
+    });
+
+    const wordsRemaining = Math.max(0, totalWords - wordsRead);
+    return { chapterTotalWords: totalWords, chapterWordsRead: wordsRead, chapterWordsRemaining: wordsRemaining, currentElementFraction: currentFraction };
+  }, [currentChapter, activeElementId, narrator.isNarrating, narrator.narratorSentenceIdx]);
 
   if (loading) {
     return (<div className="page-loader"><div className="loader-spinner" /></div>);
@@ -668,10 +800,58 @@ function ReaderContent() {
     );
   }
 
-  const currentChapter = chapters[activeChapterIndex] || { elements: [] };
+  // 1. Progreso del capítulo
+  const chapterProgressPct = chapterTotalWords > 0 
+    ? Math.min(100, Math.floor((chapterWordsRead / chapterTotalWords) * 100))
+    : 0;
+
+  // 2. Progreso total del libro
+  const progressPct = elements.length > 1
+    ? Math.min(100, Math.floor(((activeElementId + currentElementFraction) / (elements.length - 1)) * 100))
+    : (elements.length === 1 ? 100 : 0);
+
+  // 3. Tiempo restante formateado
+  const getRemainingTimeStr = () => {
+    if (chapterWordsRemaining === 0) return "0 min";
+    
+    // Velocidad promedio de lectura TTS (130 palabras por minuto)
+    const speedMultiplier = narrator.rate || 1.0;
+    const wordsPerMinute = 130 * speedMultiplier;
+    const totalMinutes = chapterWordsRemaining / wordsPerMinute;
+    
+    if (totalMinutes < 1) {
+      const seconds = Math.max(0, Math.round(totalMinutes * 60));
+      return `${seconds} s`;
+    }
+    const mins = Math.round(totalMinutes);
+    return `${mins} min`;
+  };
+  const remainingTimeStr = getRemainingTimeStr();
 
   return (
-    <div className="reader-layout">
+    <div className={`reader-layout ${sidebarCollapsed ? "reader-layout--sidebar-collapsed" : ""}`}>
+      {/* Botón de control de Sidebar */}
+      <button
+        className="sidebar-toggle-btn"
+        onClick={toggleSidebar}
+        title={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+        aria-label="Toggle Sidebar"
+      >
+        {sidebarCollapsed ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18"/>
+            <path d="M14 9l3 3-3 3"/>
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18"/>
+            <path d="M15 15l-3-3 3-3"/>
+          </svg>
+        )}
+      </button>
+
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="reader-sidebar">
         <div className="sidebar-book-info">
@@ -689,10 +869,7 @@ function ReaderContent() {
           {book.author && <p style={{ fontSize: "0.8rem", fontStyle: "italic", color: "var(--ink-muted)" }}>{book.author}</p>}
         </div>
 
-        {/* Narrador */}
-        <div style={{ padding: "0 0 16px" }}>
-          <NarratorBar narrator={narrator} />
-        </div>
+
 
         {/* Índice interactivo */}
         {chapters.length > 0 && (
@@ -730,37 +907,98 @@ function ReaderContent() {
       </aside>
 
       {/* ── Content ─────────────────────────────────────────────── */}
-      <article className="reader-content">
-        <div className="reader-book-header">
-          <h1 className="reader-book-title">{book.title}</h1>
-          <p className="reader-book-meta">{currentChapter.title} · {progressPct}% leído</p>
-        </div>
-
-        <div className="chapter-container" style={{ minHeight: "60vh" }}>
-          {currentChapter.elements.map((elem) =>
-            renderElement(
-              elem,
-              elem.originalIndex,
-              activeElementId,
-              narrator.narratorSentenceIdx,
-              narrator.isNarrating,
-              () => narrator.jumpToElement(elem.originalIndex)
-            )
-          )}
-        </div>
-
-        {chapters.length > 1 && (
-          <div className="chapter-navigation">
-            <button className="btn-outline" disabled={activeChapterIndex === 0} onClick={() => handleChapterChange(activeChapterIndex - 1)}>
-              ← Capítulo Anterior
-            </button>
-            <span className="chapter-indicator">{activeChapterIndex + 1} de {chapters.length}</span>
-            <button className="btn-outline" disabled={activeChapterIndex === chapters.length - 1} onClick={() => handleChapterChange(activeChapterIndex + 1)}>
-              Siguiente Capítulo →
-            </button>
+      <div className="reader-content-container">
+        <article className="reader-content">
+          <div className="reader-book-header">
+            <h1 className="reader-book-title">{book.title}</h1>
+            <p className="reader-book-meta">{currentChapter.title} · {progressPct}% leído</p>
           </div>
-        )}
-      </article>
+
+          <div className="chapter-container" style={{ minHeight: "60vh" }}>
+            {currentChapter.elements.map((elem) =>
+              renderElement(
+                elem,
+                elem.originalIndex,
+                activeElementId,
+                narrator.narratorSentenceIdx,
+                narrator.isNarrating,
+                () => narrator.jumpToElement(elem.originalIndex)
+              )
+            )}
+          </div>
+
+          {chapters.length > 1 && (
+            <div className="chapter-navigation">
+              <button className="btn-outline" disabled={activeChapterIndex === 0} onClick={() => handleChapterChange(activeChapterIndex - 1)}>
+                ← Capítulo Anterior
+              </button>
+              <span className="chapter-indicator">{activeChapterIndex + 1} de {chapters.length}</span>
+              <button className="btn-outline" disabled={activeChapterIndex === chapters.length - 1} onClick={() => handleChapterChange(activeChapterIndex + 1)}>
+                Siguiente Capítulo →
+              </button>
+            </div>
+          )}
+        </article>
+      </div>
+
+      {/* Reproductor flotante del narrador */}
+      <NarratorBar
+        narrator={narrator}
+        bookTitle={book.title}
+        chapterTitle={currentChapter.title}
+        bookProgressPct={progressPct}
+        chapterProgressPct={chapterProgressPct}
+        remainingTimeStr={remainingTimeStr}
+      />
+
+      {/* Alerta HUD de Narrador */}
+      <NarratorHUD type={hudState.type} visible={hudState.visible} />
+    </div>
+  );
+}
+
+// ─── Componente HUD del Narrador ──────────────────────────────────────
+function NarratorHUD({ type, visible }) {
+  if (!visible) return null;
+
+  const renderIcon = () => {
+    if (type === "play") {
+      return (
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      );
+    }
+    if (type === "pause") {
+      return (
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+        </svg>
+      );
+    }
+    if (type === "stop") {
+      return (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" />
+        </svg>
+      );
+    }
+    return null;
+  };
+
+  const getLabel = () => {
+    if (type === "play") return "Iniciado";
+    if (type === "pause") return "Pausado";
+    if (type === "stop") return "Detenido";
+    return "";
+  };
+
+  return (
+    <div className="narrator-hud">
+      <div className="narrator-hud-content">
+        <div className="narrator-hud-icon">{renderIcon()}</div>
+        <div className="narrator-hud-label">{getLabel()}</div>
+      </div>
     </div>
   );
 }
