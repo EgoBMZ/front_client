@@ -29,7 +29,7 @@ function splitIntoSentences(text) {
   return parts.map(s => s.trim()).filter(s => s.length > 0);
 }
 
-function renderElement(elem, globalIndex, activeId, narratorSentenceIdx, isNarrating) {
+function renderElement(elem, globalIndex, activeId, narratorSentenceIdx, isNarrating, onClick) {
   if (!elem) return null;
 
   const type = (elem.type || "").toLowerCase();
@@ -62,14 +62,14 @@ function renderElement(elem, globalIndex, activeId, narratorSentenceIdx, isNarra
 
   if (HEADING_TYPES.includes(type)) {
     const level = elem.headingLevel || elem["heading level"] || 1;
-    if (level === 1) return <h2 key={id} id={id} className={`${cls} elem-heading1`}>{content}</h2>;
-    if (level === 2) return <h3 key={id} id={id} className={`${cls} elem-heading2`}>{content}</h3>;
-    return <h4 key={id} id={id} className={`${cls} elem-heading3`}>{content}</h4>;
+    if (level === 1) return <h2 key={id} id={id} className={`${cls} elem-heading1`} onClick={onClick}>{content}</h2>;
+    if (level === 2) return <h3 key={id} id={id} className={`${cls} elem-heading2`} onClick={onClick}>{content}</h3>;
+    return <h4 key={id} id={id} className={`${cls} elem-heading3`} onClick={onClick}>{content}</h4>;
   }
   if (LIST_TYPES.includes(type)) {
-    return <p key={id} id={id} className={`${cls} elem-list-item`}>{content}</p>;
+    return <p key={id} id={id} className={`${cls} elem-list-item`} onClick={onClick}>{content}</p>;
   }
-  return <p key={id} id={id} className={`${cls} elem-paragraph`}>{content}</p>;
+  return <p key={id} id={id} className={`${cls} elem-paragraph`} onClick={onClick}>{content}</p>;
 }
 
 /**
@@ -158,6 +158,10 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
   // Flag para distinguir cambios de capítulo hechos por el narrador vs. el usuario
   const narratorChangedChapterRef = useRef(false);
 
+  // ID de la sesión de narración para evitar colisiones asíncronas tras cancelar/saltar
+  const narrationIdRef = useRef(0);
+  const saveTimerRef = useRef(null);
+
   // Sincronizar refs con el state
   useEffect(() => { rateRef.current = rate; }, [rate]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
@@ -168,7 +172,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
   // y repetirla desde el principio con la nueva velocidad
   const restartCurrentSentenceRef = useRef(null);
   useEffect(() => {
-    if (!narratingRef.current) return; // No narrarándo: no hacer nada
+    if (!narratingRef.current) return; // No narrando: no hacer nada
     if (typeof restartCurrentSentenceRef.current === 'function') {
       restartCurrentSentenceRef.current();
     }
@@ -191,6 +195,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
 
   const stopNarrating = useCallback(() => {
     narratingRef.current = false;
+    narrationIdRef.current += 1;
     window.speechSynthesis.cancel();
     setIsNarrating(false);
     setNarratorSentenceIdx(null);
@@ -199,6 +204,13 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
   // Navegar a un elemento y hacer scroll. También actualiza el capítulo activo visualmente.
   const goToElement = useCallback((elemIdx) => {
     setActiveElementId(elemIdx);
+    // Guardar el progreso directamente ya que el scroll-spy no correrá mientras se narra
+    if (user && bookId) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveProgress(user.uid, bookId, elemIdx).catch(() => {});
+      }, 1000);
+    }
     // Detectar si el elemento pertenece a un capítulo diferente y actualizar
     const chs = chaptersRef.current;
     for (let i = chs.length - 1; i >= 0; i--) {
@@ -212,10 +224,11 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     setTimeout(() => {
       document.getElementById(`doc-el-${elemIdx}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 50);
-  }, [setActiveElementId, setActiveChapterIndex]);
+  }, [setActiveElementId, setActiveChapterIndex, user, bookId]);
 
-  const narrateElement = useCallback((elemGlobalIdx, sentenceStartIdx = 0) => {
+  const narrateElement = useCallback((elemGlobalIdx, sentenceStartIdx = 0, currentId) => {
     if (!narratingRef.current) return;
+    if (currentId !== narrationIdRef.current) return;
 
     const elem = elements[elemGlobalIdx];
     if (!elem) {
@@ -225,13 +238,13 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
 
     const type = (elem.type || "").toLowerCase();
     if (SKIP_TYPES.includes(type)) {
-      narrateElement(elemGlobalIdx + 1, 0);
+      narrateElement(elemGlobalIdx + 1, 0, currentId);
       return;
     }
 
     const fullText = (elem.content || elem.text || "").trim();
     if (!fullText) {
-      narrateElement(elemGlobalIdx + 1, 0);
+      narrateElement(elemGlobalIdx + 1, 0, currentId);
       return;
     }
 
@@ -243,8 +256,10 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
 
     const narrateSentence = (fromIdx) => {
       if (!narratingRef.current) return;
+      if (currentId !== narrationIdRef.current) return;
+
       if (fromIdx >= sentences.length) {
-        narrateElement(elemGlobalIdx + 1, 0);
+        narrateElement(elemGlobalIdx + 1, 0, currentId);
         return;
       }
 
@@ -263,11 +278,13 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
 
       utterance.onend = () => {
         if (!narratingRef.current) return;
+        if (currentId !== narrationIdRef.current) return;
         restartCurrentSentenceRef.current = null;
         narrateSentence(sentenceIdx + 1);
       };
       utterance.onerror = (e) => {
         if (e.error === "interrupted" || e.error === "canceled") return;
+        if (currentId !== narrationIdRef.current) return;
         restartCurrentSentenceRef.current = null;
         narrateSentence(sentenceIdx + 1);
       };
@@ -278,14 +295,16 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
         window.speechSynthesis.cancel();
         // Pequeño delay para que cancel() termine antes de hablar de nuevo
         setTimeout(() => {
-          if (narratingRef.current) narrateSentence(sentenceIdx);
+          if (narratingRef.current && currentId === narrationIdRef.current) {
+            narrateSentence(sentenceIdx);
+          }
         }, 80);
       };
       window.speechSynthesis.speak(utterance);
     };
 
     narrateSentence(sentenceStartIdx);
-  }, [elements, selectedVoice, rate, volume, goToElement, stopNarrating]);
+  }, [elements, goToElement, stopNarrating]);
 
   const startNarrating = useCallback(() => {
     if (isNarrating) {
@@ -295,8 +314,9 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     window.speechSynthesis.cancel();
     narratingRef.current = true;
     setIsNarrating(true);
+    narrationIdRef.current += 1;
     // Comenzar desde el elemento activo actual
-    narrateElement(activeElementId, 0);
+    narrateElement(activeElementId, 0, narrationIdRef.current);
   }, [isNarrating, activeElementId, narrateElement, stopNarrating]);
 
   // Pausa / Reanuda
@@ -308,11 +328,27 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     }
   }, []);
 
+  const jumpToElement = useCallback((elemIdx) => {
+    if (!narratingRef.current) {
+      goToElement(elemIdx);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    narrationIdRef.current += 1;
+    const newId = narrationIdRef.current;
+    setTimeout(() => {
+      if (narratingRef.current && newId === narrationIdRef.current) {
+        narrateElement(elemIdx, 0, newId);
+      }
+    }, 100);
+  }, [goToElement, narrateElement]);
+
   // Limpiar al desmontar
   useEffect(() => {
     return () => {
       narratingRef.current = false;
       window.speechSynthesis.cancel();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
 
@@ -347,7 +383,7 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     isNarrating, voices: voiceOptions, selectedVoice, setSelectedVoice,
     rate, setRate, volume, setVolume,
     narratorSentenceIdx, showSettings, setShowSettings,
-    startNarrating, pauseResume, stopNarrating,
+    startNarrating, pauseResume, stopNarrating, jumpToElement,
   };
 }
 
@@ -501,6 +537,12 @@ function ReaderContent() {
 
   const saveTimerRef = useRef(null);
 
+  // ── Narrador ──────────────────────────────────────────────────────
+  const narrator = useNarrator({
+    elements, activeElementId, setActiveElementId,
+    activeChapterIndex, setActiveChapterIndex, chapters, user, bookId,
+  });
+
   // ── Cargar libro y progreso ──────────────────────────────────────
   useEffect(() => {
     if (!bookId || !user) return;
@@ -550,6 +592,8 @@ function ReaderContent() {
 
   // ── Seguimiento de scroll (Guardado automático) ───────────────────
   const handleScroll = useCallback(() => {
+    if (narrator.isNarrating) return;
+
     const els = document.querySelectorAll(".doc-element");
     let closest = null;
     let closestDist = Infinity;
@@ -570,7 +614,7 @@ function ReaderContent() {
         if (user && bookId) saveProgress(user.uid, bookId, closest).catch(() => {});
       }, 2000);
     }
-  }, [user, bookId]);
+  }, [user, bookId, narrator.isNarrating]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -589,11 +633,7 @@ function ReaderContent() {
     }
   };
 
-  // ── Narrador ──────────────────────────────────────────────────────
-  const narrator = useNarrator({
-    elements, activeElementId, setActiveElementId,
-    activeChapterIndex, setActiveChapterIndex, chapters, user, bookId,
-  });
+
 
   // ── Cálculo de progreso exacto ─────────────────────────────────────
   const progressPct = elements.length > 1
@@ -698,7 +738,14 @@ function ReaderContent() {
 
         <div className="chapter-container" style={{ minHeight: "60vh" }}>
           {currentChapter.elements.map((elem) =>
-            renderElement(elem, elem.originalIndex, activeElementId, narrator.narratorSentenceIdx, narrator.isNarrating)
+            renderElement(
+              elem,
+              elem.originalIndex,
+              activeElementId,
+              narrator.narratorSentenceIdx,
+              narrator.isNarrating,
+              () => narrator.jumpToElement(elem.originalIndex)
+            )
           )}
         </div>
 
