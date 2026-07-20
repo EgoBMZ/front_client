@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/lib/auth";
 import { useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Navbar() {
   const { user } = useAuth();
+  const { theme, toggleTheme, mounted } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,6 +50,15 @@ export default function Navbar() {
 
         {/* User area */}
         <div className="navbar-user">
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            aria-label="Cambiar tema"
+            id="theme-toggle-btn"
+          >
+            {mounted && theme === "dark" ? "☀️" : "🌙"}
+          </button>
+
           {user ? (
             <div className="user-menu-wrapper">
               <button

@@ -32,6 +32,22 @@
   --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
   --navbar-h: 64px;
   --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  --navbar-bg: rgba(250, 247, 242, 0.92);
+}
+
+[data-theme='dark'] {
+  --cream: #12110F;
+  --cream-dark: #1C1916;
+  --white: #1A1715;
+  --ink: #F5F1EB;
+  --ink-light: #D9D2C9;
+  --ink-muted: #9C8E80;
+  --border: rgba(245, 241, 245, 0.12);
+  --border-strong: rgba(245, 241, 245, 0.22);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.7);
+  --navbar-bg: rgba(18, 17, 15, 0.92);
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────── */
@@ -75,7 +91,7 @@ img { max-width: 100%; display: block; }
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--navbar-h);
-  background: rgba(250, 247, 242, 0.92);
+  background: var(--navbar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -124,7 +140,34 @@ img { max-width: 100%; display: block; }
 .nav-link:hover { color: var(--ink); background: var(--cream-dark); }
 .nav-link--active { color: var(--coral); background: rgba(232, 86, 58, 0.08); }
 
-.navbar-user { position: relative; }
+.navbar-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-light);
+  transition: all var(--transition);
+}
+.theme-toggle-btn:hover {
+  background: var(--cream-dark);
+  color: var(--ink);
+  transform: scale(1.05);
+}
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
 
 .user-menu-wrapper { position: relative; }
 
@@ -445,10 +488,9 @@ img { max-width: 100%; display: block; }
 }
 
 .cta-subtitle {
-  color: var(--ink-muted);
   margin-bottom: 36px;
   font-size: 1rem;
-  color: rgba(250, 247, 242, 0.65);
+  opacity: 0.65;
 }
 
 /* ─── Login Page ─────────────────────────────────────────────────── */
