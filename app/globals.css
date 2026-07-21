@@ -1621,6 +1621,48 @@ img { max-width: 100%; display: block; }
   .books-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; }
   .hero-title { font-size: 2.6rem; }
   .upload-zone { padding: 40px 20px; }
+
+  /* Mobile Reader Adjustments */
+  .reader-settings-trigger {
+    bottom: auto;
+    top: 16px;
+    right: 16px;
+  }
+  .narrator-bar {
+    padding: 12px 16px;
+    height: auto;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .narrator-info-col {
+    align-items: center;
+    text-align: center;
+  }
+  .narrator-controls-col {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  .narrator-stats-col {
+    display: none; /* Hide badges on small screens to prioritize reading and controls */
+  }
+  .narrator-settings {
+    bottom: calc(100% + 15px);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 320px;
+  }
+  
+  .reader-settings-drawer {
+    top: 0;
+    height: 100vh;
+    width: 100%;
+    left: 0;
+    right: 0;
+    border-left: none;
+  }
 }
 
 /* ─── Narrator HUD Overlay ───────────────────────────────────────── */
