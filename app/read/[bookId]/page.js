@@ -403,12 +403,8 @@ function NarratorBar({ narrator, bookTitle, chapterTitle, bookProgressPct, chapt
     if (!isNarrating) {
       startNarrating();
     } else {
-      pauseResume();
+      stopNarrating();
     }
-  };
-
-  const handleStop = () => {
-    stopNarrating();
   };
 
   return (
@@ -422,25 +418,17 @@ function NarratorBar({ narrator, bookTitle, chapterTitle, bookProgressPct, chapt
       {/* Columna Central: Controles principales */}
       <div className="narrator-controls-col">
         <button
-          className={`narrator-btn narrator-btn--play ${isNarrating && !isPaused ? "narrator-btn--playing" : ""}`}
+          className={`narrator-btn narrator-btn--play ${isNarrating ? "narrator-btn--playing" : ""}`}
           onClick={handlePlayPause}
-          title={isNarrating ? (isPaused ? "Reanudar" : "Pausar") : "Narrar desde aquí"}
+          title={isNarrating ? "Pausar narración" : "Narrar desde aquí"}
           id="narrator-play-btn"
         >
           {!isNarrating ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          ) : isPaused ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           )}
         </button>
-
-        {isNarrating && (
-          <button className="narrator-btn" onClick={handleStop} title="Detener" id="narrator-stop-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-          </button>
-        )}
 
         <button
           className={`narrator-btn narrator-btn--settings ${showSettings ? "narrator-btn--settings-open" : ""}`}
@@ -556,40 +544,7 @@ function ReaderContent() {
     });
   };
 
-  // ── HUD Feedback Animation State ──────────────────────────────────
-  const [hudState, setHudState] = useState({ visible: false, type: "" });
-  const hudTimeoutRef = useRef(null);
 
-  const triggerHud = (type) => {
-    if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
-    setHudState({ visible: true, type });
-    hudTimeoutRef.current = setTimeout(() => {
-      setHudState({ visible: false, type });
-    }, 1000);
-  };
-
-  const prevIsNarratingRef = useRef(narrator.isNarrating);
-  const prevIsPausedRef = useRef(narrator.isPaused);
-
-  useEffect(() => {
-    const prevIsNarrating = prevIsNarratingRef.current;
-    const prevIsPaused = prevIsPausedRef.current;
-
-    if (narrator.isNarrating && !prevIsNarrating) {
-      triggerHud("play");
-    } else if (!narrator.isNarrating && prevIsNarrating) {
-      triggerHud("stop");
-    } else if (narrator.isNarrating && prevIsNarrating) {
-      if (narrator.isPaused && !prevIsPaused) {
-        triggerHud("pause");
-      } else if (!narrator.isPaused && prevIsPaused) {
-        triggerHud("play");
-      }
-    }
-
-    prevIsNarratingRef.current = narrator.isNarrating;
-    prevIsPausedRef.current = narrator.isPaused;
-  }, [narrator.isNarrating, narrator.isPaused]);
 
   // ── Spacebar play/pause shortcut ──────────────────────────────────
   useEffect(() => {
@@ -950,9 +905,6 @@ function ReaderContent() {
         chapterProgressPct={chapterProgressPct}
         remainingTimeStr={remainingTimeStr}
       />
-
-      {/* Alerta HUD de Narrador */}
-      <NarratorHUD type={hudState.type} visible={hudState.visible} />
     </div>
   );
 }
