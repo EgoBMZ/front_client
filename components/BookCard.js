@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { cleanBookTitle } from "@/lib/firestore";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 export default function BookCard({ book }) {
   const { id, uploadedAt, pageCount, author, coverUrl } = book;
   const title = cleanBookTitle(book.title);
@@ -37,20 +39,24 @@ export default function BookCard({ book }) {
       })
     : "Fecha desconocida";
 
+  const displayCoverUrl = coverUrl
+    ? (coverUrl.startsWith("http") ? coverUrl : `${BACKEND_URL}${coverUrl}`)
+    : null;
+
   return (
-    <Link href={`/read/${id}`} className="book-card" id={`book-card-${id}`}>
+    <Link href={`/book/${id}`} className="book-card" id={`book-card-${id}`}>
       {/* Portada simulada o Real */}
       <div
         className="book-cover"
         style={{
-          background: coverUrl ? "#fff" : `linear-gradient(145deg, ${from}, ${to})`,
-          backgroundImage: coverUrl ? `url(${coverUrl})` : "none",
+          background: displayCoverUrl ? "#fff" : `linear-gradient(145deg, ${from}, ${to})`,
+          backgroundImage: displayCoverUrl ? `url(${displayCoverUrl})` : "none",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        {!coverUrl && <span className="book-cover-initial">{initial}</span>}
-        <div className="book-spine" style={{ background: coverUrl ? "rgba(0,0,0,0.1)" : from }} />
+        {!displayCoverUrl && <span className="book-cover-initial">{initial}</span>}
+        <div className="book-spine" style={{ background: displayCoverUrl ? "rgba(0,0,0,0.1)" : from }} />
       </div>
 
       {/* Info */}

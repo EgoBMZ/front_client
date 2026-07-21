@@ -7,6 +7,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBook, getProgress, saveProgress, cleanBookTitle, saveReaderSettings, getReaderSettings } from "@/lib/firestore";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 export default function ReaderPage() {
   return (
     <ProtectedRoute>
@@ -844,6 +846,10 @@ function ReaderContent() {
   };
   const remainingTimeStr = getRemainingTimeStr();
 
+  const displayCoverUrl = book?.coverUrl
+    ? (book.coverUrl.startsWith("http") ? book.coverUrl : `${BACKEND_URL}${book.coverUrl}`)
+    : null;
+
   return (
     <div 
       className={`reader-layout ${sidebarCollapsed ? "reader-layout--sidebar-collapsed" : ""}`}
@@ -876,12 +882,12 @@ function ReaderContent() {
           <div
             className="sidebar-book-cover"
             style={{
-              background: book.coverUrl ? "#fff" : `linear-gradient(145deg, ${coverFrom}, ${coverTo})`,
-              backgroundImage: book.coverUrl ? `url(${book.coverUrl})` : "none",
+              background: displayCoverUrl ? "#fff" : `linear-gradient(145deg, ${coverFrom}, ${coverTo})`,
+              backgroundImage: displayCoverUrl ? `url(${displayCoverUrl})` : "none",
               backgroundSize: "cover", backgroundPosition: "center",
             }}
           >
-            {!book.coverUrl && (book.title?.charAt(0).toUpperCase() || "L")}
+            {!displayCoverUrl && (book.title?.charAt(0).toUpperCase() || "L")}
           </div>
           <h2 className="sidebar-book-title">{book.title}</h2>
           {book.author && <p style={{ fontSize: "0.8rem", fontStyle: "italic", color: "var(--ink-muted)" }}>{book.author}</p>}
