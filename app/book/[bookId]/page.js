@@ -60,6 +60,13 @@ export default function BookProfilePage() {
     <>
       <Navbar />
       <main className="book-profile-container">
+        <button onClick={() => router.push("/library")} className="book-profile-back-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          <span>Volver a la biblioteca</span>
+        </button>
+
         <div className="book-profile-content">
           
           <div className="book-profile-left">

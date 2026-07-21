@@ -62,11 +62,9 @@ export default function BookCard({ book }) {
       {/* Info */}
       <div className="book-info">
         <h3 className="book-title">{title || "Sin título"}</h3>
-        {author && <p className="book-author">{author}</p>}
+        <p className="book-author">{author || ""}</p>
         <p className="book-meta">
           {pageCount ? `${pageCount} págs` : ""}
-          {pageCount && formattedDate ? " · " : ""}
-          {formattedDate}
         </p>
       </div>
     </Link>
