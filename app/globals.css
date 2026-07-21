@@ -1625,7 +1625,7 @@ img { max-width: 100%; display: block; }
   /* Mobile Reader Adjustments */
   .reader-settings-trigger {
     bottom: auto;
-    top: 16px;
+    top: 76px;
     right: 16px;
   }
   .narrator-bar {
