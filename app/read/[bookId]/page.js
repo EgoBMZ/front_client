@@ -111,13 +111,36 @@ function buildChapters(elements) {
   return chapters;
 }
 
-// ─── Las 3 mejores voces en español compatibles con Safari & Chrome ───
-// Paulina (México) es la voz por defecto
-const PREFERRED_VOICES = [
-  { name: "Paulina", lang: "es-MX", label: "Paulina (México)" },
-  { name: "Mónica", lang: "es-ES", label: "Mónica (España)" },
-  { name: "Jorge", lang: "es-ES", label: "Jorge (España)" },
-];
+// ─── Algoritmo de Voces Premium ────────────────────────────────────────
+function getSpanishVoicesCategorized(allVoices) {
+  const esVoices = allVoices.filter(v => v.lang.startsWith("es"));
+  const premiumKeywords = ["premium", "enhanced", "google", "online", "natural", "siri"];
+  
+  const categorized = esVoices.map(v => {
+    const nameLower = v.name.toLowerCase();
+    const isPremium = premiumKeywords.some(keyword => nameLower.includes(keyword));
+    
+    let label = v.name;
+    label = label.replace(/Microsoft |Online \(Natural\) - Spanish|Spanish \(.+\)|Voice/gi, "").trim();
+    if (label.endsWith("-")) label = label.slice(0, -1).trim();
+    
+    return {
+      voice: v,
+      name: v.name,
+      label: label,
+      voiceName: v.name,
+      isPremium
+    };
+  });
+
+  categorized.sort((a, b) => {
+    if (a.isPremium && !b.isPremium) return -1;
+    if (!a.isPremium && b.isPremium) return 1;
+    return a.label.localeCompare(b.label);
+  });
+
+  return categorized;
+}
 
 // Velocidades predefinidas
 const SPEED_PRESETS = [
@@ -128,15 +151,6 @@ const SPEED_PRESETS = [
   { value: 1.75, label: "1.75×" },
   { value: 2.0,  label: "2×"    },
 ];
-
-function findPreferredVoice(voices) {
-  for (const pref of PREFERRED_VOICES) {
-    const found = voices.find(v => v.name.toLowerCase().includes(pref.name.toLowerCase()) && v.lang.startsWith(pref.lang.split("-")[0]));
-    if (found) return found;
-  }
-  // Fallback: cualquier voz en español
-  return voices.find(v => v.lang.startsWith("es")) || voices[0];
-}
 
 // ─── Hook del narrador TTS ─────────────────────────────────────────────
 function useNarrator({ elements, activeElementId, setActiveElementId, activeChapterIndex, setActiveChapterIndex, chapters, user, bookId }) {
@@ -183,9 +197,14 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     const loadVoices = () => {
       const available = window.speechSynthesis.getVoices();
       if (available.length > 0) {
-        setVoices(available);
-        const preferred = findPreferredVoice(available);
-        setSelectedVoice(preferred ? preferred.name : "");
+        const categorized = getSpanishVoicesCategorized(available);
+        // Limitar a las 10 mejores opciones para no saturar la UI
+        const topVoices = categorized.slice(0, 10);
+        setVoices(topVoices);
+        // Seleccionar la primera voz premium (o la primera en general si no hay premium)
+        if (topVoices.length > 0) {
+          setSelectedVoice(topVoices[0].voiceName);
+        }
       }
     };
     loadVoices();
@@ -368,24 +387,8 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     if (isNarrating) stopNarrating();
   }, [activeChapterIndex]); // eslint-disable-line
 
-  // Filtrar las 3 voces preferidas que estén disponibles
-  const availablePreferred = PREFERRED_VOICES.map(pref => {
-    const match = voices.find(v =>
-      v.name.toLowerCase().includes(pref.name.toLowerCase()) &&
-      v.lang.startsWith(pref.lang.split("-")[0])
-    );
-    return match ? { ...pref, voiceName: match.name, available: true } : { ...pref, available: false };
-  }).filter(v => v.available);
-
-  // Si no hay ninguna de las preferidas, tomar las primeras 3 en español
-  const voiceOptions = availablePreferred.length > 0
-    ? availablePreferred
-    : voices.filter(v => v.lang.startsWith("es")).slice(0, 3).map(v => ({
-        name: v.name, label: v.name, voiceName: v.name, available: true
-      }));
-
   return {
-    isNarrating, isPaused, voices: voiceOptions, selectedVoice, setSelectedVoice,
+    isNarrating, isPaused, voices, selectedVoice, setSelectedVoice,
     rate, setRate,
     narratorSentenceIdx, showSettings, setShowSettings,
     startNarrating, pauseResume, stopNarrating, jumpToElement,
@@ -476,10 +479,11 @@ function NarratorBar({ narrator, bookTitle, chapterTitle, bookProgressPct, chapt
               {voices.map((v) => (
                 <button
                   key={v.voiceName}
-                  className={`narrator-voice-btn ${selectedVoice === v.voiceName ? "narrator-voice-btn--active" : ""}`}
+                  className={`narrator-voice-btn ${selectedVoice === v.voiceName ? "narrator-voice-btn--active" : ""} ${v.isPremium ? "narrator-voice-btn--premium" : ""}`}
                   onClick={() => setSelectedVoice(v.voiceName)}
-                  id={`voice-btn-${v.name}`}
+                  id={`voice-btn-${v.name.replace(/\s+/g, '-')}`}
                 >
+                  {v.isPremium && <span className="premium-star" title="Voz Premium de Alta Calidad">⭐️ </span>}
                   {v.label}
                 </button>
               ))}

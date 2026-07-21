@@ -1556,6 +1556,8 @@ img { max-width: 100%; display: block; }
 }
 .narrator-voice-btn:hover { border-color: var(--coral-light); color: var(--coral); background: rgba(123, 92, 250,0.04); }
 .narrator-voice-btn--active { border-color: var(--coral); background: rgba(123, 92, 250, 0.08); color: var(--coral); font-weight: 600; }
+.narrator-voice-btn--premium { border-left: 3px solid var(--accent); background: linear-gradient(90deg, rgba(42, 157, 143, 0.05) 0%, transparent 100%); }
+.premium-star { margin-right: 4px; font-size: 0.9em; }
 
 .narrator-no-voices { font-size: 0.8rem; color: var(--ink-muted); font-style: italic; }
 
