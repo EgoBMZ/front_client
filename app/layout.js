@@ -17,9 +17,9 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Lexis — Tu biblioteca digital",
+  title: "AuraRead — Tu biblioteca digital",
   description:
-    "Sube tus libros en PDF y léelos desde cualquier dispositivo. Lexis recuerda en qué página quedaste.",
+    "Sube tus libros en PDF y léelos desde cualquier dispositivo. AuraRead recuerda en qué página quedaste.",
   keywords: "lector, libros, PDF, biblioteca digital, leer online",
 };
 

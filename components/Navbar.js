@@ -30,7 +30,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="navbar-logo">
           <span className="logo-icon">📖</span>
-          <span className="logo-text">Lexis</span>
+          <span className="logo-text">AuraRead</span>
         </Link>
 
         {/* Links (desktop) */}

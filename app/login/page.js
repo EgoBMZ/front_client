@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         {/* Logo */}
-        <div className="login-logo">📖 Lexis</div>
+        <div className="login-logo">📖 AuraRead</div>
         <p className="login-tagline">Tu biblioteca digital, en cualquier lugar</p>
 
         {/* Divider */}
