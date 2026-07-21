@@ -1007,9 +1007,13 @@ function ReaderContent() {
         title="Apariencia"
         style={showUISettings ? { borderColor: 'var(--coral)', color: 'var(--coral)' } : {}}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* A Mayúscula */}
+          <polyline points="4 20 10 4 16 20" />
+          <line x1="6" y1="14" x2="14" y2="14" />
+          {/* a minúscula */}
+          <circle cx="19" cy="17" r="3" />
+          <path d="M22 12v8" />
         </svg>
       </button>
 
@@ -1043,18 +1047,17 @@ function ReaderContent() {
             <div className="settings-section-title">Tipografía</div>
             <div className="settings-row">
               {[
-                { label: 'Lora',         value: "'Lora', Georgia, serif" },
-                { label: 'Serif',        value: "'Playfair Display', Georgia, serif" },
-                { label: 'Garamond',     value: "'EB Garamond', Georgia, serif" },
-                { label: 'Merriweather', value: "'Merriweather', Georgia, serif" },
-                { label: 'Source Serif', value: "'Source Serif 4', Georgia, serif" },
-                { label: 'Sans',         value: "'Inter', system-ui, sans-serif" },
+                { label: 'Lora',         value: "'Lora', Georgia, serif", cls: 'font-opt-lora' },
+                { label: 'Serif',        value: "'Playfair Display', Georgia, serif", cls: 'font-opt-serif' },
+                { label: 'Garamond',     value: "'EB Garamond', Georgia, serif", cls: 'font-opt-garamond' },
+                { label: 'Merriweather', value: "'Merriweather', Georgia, serif", cls: 'font-opt-merriweather' },
+                { label: 'Source Serif', value: "'Source Serif 4', Georgia, serif", cls: 'font-opt-sourceserif' },
+                { label: 'Sans',         value: "'Inter', system-ui, sans-serif", cls: 'font-opt-sans' },
               ].map(f => (
                 <button 
                   key={f.value}
-                  className={`settings-opt-btn ${uiSettings.fontFamily === f.value ? 'settings-opt-btn--active' : ''}`}
+                  className={`settings-opt-btn ${f.cls} ${uiSettings.fontFamily === f.value ? 'settings-opt-btn--active' : ''}`}
                   onClick={() => updateUISetting('fontFamily', f.value)}
-                  style={{ fontFamily: f.value }}
                 >
                   {f.label}
                 </button>

@@ -1817,6 +1817,14 @@ img { max-width: 100%; display: block; }
 .settings-opt-btn:hover { border-color: var(--coral-light); color: var(--coral); }
 .settings-opt-btn--active { border-color: var(--coral); background: rgba(123,92,250,0.08); color: var(--coral); font-weight: 700; }
 
+/* Enforce individual typography previews on buttons regardless of parent */
+.font-opt-lora { font-family: 'Lora', Georgia, serif !important; }
+.font-opt-serif { font-family: 'Playfair Display', Georgia, serif !important; }
+.font-opt-garamond { font-family: 'EB Garamond', Georgia, serif !important; }
+.font-opt-merriweather { font-family: 'Merriweather', Georgia, serif !important; }
+.font-opt-sourceserif { font-family: 'Source Serif 4', Georgia, serif !important; }
+.font-opt-sans { font-family: 'Inter', system-ui, sans-serif !important; }
+
 /* Theme circles row */
 .settings-theme-circles { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .settings-theme-option { display: flex; flex-direction: column; align-items: center; gap: 5px; }
