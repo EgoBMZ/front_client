@@ -519,6 +519,7 @@ function ReaderContent() {
   const [chapters, setChapters] = useState([]);
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [activeElementId, setActiveElementId] = useState(0);
+  const [showSyncBtn, setShowSyncBtn] = useState(false);
 
   const saveTimerRef = useRef(null);
 
@@ -628,7 +629,18 @@ function ReaderContent() {
 
   // ── Seguimiento de scroll (Guardado automático) ───────────────────
   const handleScroll = useCallback(() => {
-    if (narrator.isNarrating) return;
+    if (narrator.isNarrating) {
+      const activeEl = document.getElementById(`doc-el-${activeElementId}`);
+      if (activeEl) {
+        const rect = activeEl.getBoundingClientRect();
+        const isOut = rect.bottom < 80 || rect.top > (window.innerHeight - 80);
+        setShowSyncBtn(isOut);
+      }
+      return;
+    }
+    
+    // Normal scroll tracking when not narrating
+    setShowSyncBtn(false);
 
     const els = document.querySelectorAll(".doc-element");
     let closest = null;
@@ -650,7 +662,7 @@ function ReaderContent() {
         if (user && bookId) saveProgress(user.uid, bookId, closest).catch(() => {});
       }, 2000);
     }
-  }, [user, bookId, narrator.isNarrating]);
+  }, [user, bookId, narrator.isNarrating, activeElementId]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -896,6 +908,26 @@ function ReaderContent() {
         </article>
       </div>
 
+      {/* Botón flotante para Sincronizar Narrador si el usuario scrolleó lejos */}
+      {showSyncBtn && narrator.isNarrating && (
+        <button 
+          className="narrator-sync-btn" 
+          onClick={() => {
+            const activeEl = document.getElementById(`doc-el-${activeElementId}`);
+            if (activeEl) {
+              activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            setShowSyncBtn(false);
+          }}
+          title="Volver a la posición del narrador"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          Sincronizar
+        </button>
+      )}
+
       {/* Reproductor flotante del narrador */}
       <NarratorBar
         narrator={narrator}
@@ -905,52 +937,6 @@ function ReaderContent() {
         chapterProgressPct={chapterProgressPct}
         remainingTimeStr={remainingTimeStr}
       />
-    </div>
-  );
-}
-
-// ─── Componente HUD del Narrador ──────────────────────────────────────
-function NarratorHUD({ type, visible }) {
-  if (!visible) return null;
-
-  const renderIcon = () => {
-    if (type === "play") {
-      return (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      );
-    }
-    if (type === "pause") {
-      return (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-        </svg>
-      );
-    }
-    if (type === "stop") {
-      return (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="6" width="12" height="12" />
-        </svg>
-      );
-    }
-    return null;
-  };
-
-  const getLabel = () => {
-    if (type === "play") return "Iniciado";
-    if (type === "pause") return "Pausado";
-    if (type === "stop") return "Detenido";
-    return "";
-  };
-
-  return (
-    <div className="narrator-hud">
-      <div className="narrator-hud-content">
-        <div className="narrator-hud-icon">{renderIcon()}</div>
-        <div className="narrator-hud-label">{getLabel()}</div>
-      </div>
     </div>
   );
 }
