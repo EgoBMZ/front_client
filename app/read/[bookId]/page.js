@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBook, getProgress, saveProgress, cleanBookTitle } from "@/lib/firestore";
+import { getBook, getProgress, saveProgress, cleanBookTitle, saveReaderSettings, getReaderSettings } from "@/lib/firestore";
 
 export default function ReaderPage() {
   return (
@@ -545,6 +545,55 @@ function ReaderContent() {
     });
   };
 
+  // ── UI Settings State ──────────────────────────────────────────────
+  const [showUISettings, setShowUISettings] = useState(false);
+  const [uiSettings, setUiSettings] = useState({
+    fontSize: 18,
+    fontFamily: "'Lora', Georgia, serif",
+    theme: "day",
+    customBg: "#FAF7F2",
+    customText: "#1A1510",
+  });
+
+  // ── Isolated reader theme: --rd-* CSS vars, completely independent from global data-theme ──
+  const READER_THEMES = {
+    day:   { bg: '#FAFAF8', ink: '#1C1C1E', inkMuted: '#636366', border: 'rgba(0,0,0,0.08)' },
+    night: { bg: '#141414', ink: '#E8E8E8', inkMuted: '#9A9A9A', border: 'rgba(255,255,255,0.08)' },
+    sepia: { bg: '#F6F0E4', ink: '#3B2F1E', inkMuted: '#7A6348', border: 'rgba(59,47,30,0.1)' },
+    forest:{ bg: '#1A2420', ink: '#C8D8C0', inkMuted: '#8FA887', border: 'rgba(200,216,192,0.1)' },
+    custom:{ bg: uiSettings.customBg, ink: uiSettings.customText, inkMuted: uiSettings.customText, border: 'rgba(128,128,128,0.15)' },
+  };
+  const activeTheme = READER_THEMES[uiSettings.theme] || READER_THEMES.day;
+
+  // CSS vars injected on the chapter-container: fully isolated from global theme
+  const readerCSSVars = {
+    '--rd-bg':       activeTheme.bg,
+    '--rd-ink':      activeTheme.ink,
+    '--rd-ink-muted':activeTheme.inkMuted,
+    '--rd-border':   activeTheme.border,
+    '--rd-font':     uiSettings.fontFamily,
+    'fontSize':      `${uiSettings.fontSize}px`,
+    'fontFamily':    uiSettings.fontFamily,
+    'background':    activeTheme.bg,
+    'color':         activeTheme.ink,
+  };
+
+  useEffect(() => {
+    if (user) {
+      getReaderSettings(user.uid).then((saved) => {
+        if (saved) setUiSettings(prev => ({ ...prev, ...saved }));
+      }).catch(console.error);
+    }
+  }, [user]);
+
+  const updateUISetting = (key, val) => {
+    const newSettings = { ...uiSettings, [key]: val };
+    setUiSettings(newSettings);
+    if (user) {
+      saveReaderSettings(user.uid, newSettings).catch(console.error);
+    }
+  };
+
 
 
   // ── Spacebar play/pause shortcut ──────────────────────────────────
@@ -796,7 +845,9 @@ function ReaderContent() {
   const remainingTimeStr = getRemainingTimeStr();
 
   return (
-    <div className={`reader-layout ${sidebarCollapsed ? "reader-layout--sidebar-collapsed" : ""}`}>
+    <div 
+      className={`reader-layout ${sidebarCollapsed ? "reader-layout--sidebar-collapsed" : ""}`}
+    >
       {/* Botón de control de Sidebar */}
       <button
         className="sidebar-toggle-btn"
@@ -874,14 +925,15 @@ function ReaderContent() {
       </aside>
 
       {/* ── Content ─────────────────────────────────────────────── */}
-      <div className="reader-content-container">
-        <article className="reader-content">
+      <div className="reader-content-container" style={{ background: activeTheme.bg }}>
+        <article className="reader-content" style={{ background: activeTheme.bg }}>
           <div className="reader-book-header">
             <h1 className="reader-book-title">{book.title}</h1>
             <p className="reader-book-meta">{currentChapter.title} · {progressPct}% leído</p>
           </div>
 
-          <div className="chapter-container" style={{ minHeight: "60vh" }}>
+          {/* chapter-container carries all --rd-* vars and the font size in px so em units cascade correctly */}
+          <div className="chapter-container" style={{ minHeight: "60vh", ...readerCSSVars }}>
             {currentChapter.elements.map((elem) =>
               renderElement(
                 elem,
@@ -937,6 +989,114 @@ function ReaderContent() {
         chapterProgressPct={chapterProgressPct}
         remainingTimeStr={remainingTimeStr}
       />
+
+      {/* Botón flotante para Settings de UI */}
+      <button 
+        className="reader-settings-trigger" 
+        onClick={() => setShowUISettings(s => !s)}
+        title="Apariencia"
+        style={showUISettings ? { borderColor: 'var(--coral)', color: 'var(--coral)' } : {}}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+
+      {/* Drawer de Configuración UI (se desliza desde la derecha, no bloquea la lectura) */}
+      {showUISettings && (
+        <div className="reader-settings-drawer">
+          <div className="settings-header">
+            <h3>Apariencia</h3>
+            <button className="settings-close-btn" onClick={() => setShowUISettings(false)} title="Cerrar">
+              ×
+            </button>
+          </div>
+
+          {/* Tamaño de letra */}
+          <div className="settings-section">
+            <div className="settings-section-title">Tamaño de letra</div>
+            <div className="settings-slider-wrap">
+              <span>A</span>
+              <input 
+                type="range" min="14" max="32" step="2" 
+                value={uiSettings.fontSize} 
+                onChange={(e) => updateUISetting('fontSize', parseInt(e.target.value))} 
+              />
+              <span>A</span>
+            </div>
+            <div className="settings-font-size-display">{uiSettings.fontSize}px</div>
+          </div>
+
+          {/* Tipografía */}
+          <div className="settings-section">
+            <div className="settings-section-title">Tipografía</div>
+            <div className="settings-row">
+              {[
+                { label: 'Lora',         value: "'Lora', Georgia, serif" },
+                { label: 'Serif',        value: "'Playfair Display', Georgia, serif" },
+                { label: 'Garamond',     value: "'EB Garamond', Georgia, serif" },
+                { label: 'Merriweather', value: "'Merriweather', Georgia, serif" },
+                { label: 'Source Serif', value: "'Source Serif 4', Georgia, serif" },
+                { label: 'Sans',         value: "'Inter', system-ui, sans-serif" },
+              ].map(f => (
+                <button 
+                  key={f.value}
+                  className={`settings-opt-btn ${uiSettings.fontFamily === f.value ? 'settings-opt-btn--active' : ''}`}
+                  onClick={() => updateUISetting('fontFamily', f.value)}
+                  style={{ fontFamily: f.value }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tema */}
+          <div className="settings-section">
+            <div className="settings-section-title">Tema de color</div>
+            <div className="settings-theme-circles">
+              {[
+                { key: 'day',    label: '☀️ Día',   bg: '#FAFAF8', ink: '#333' },
+                { key: 'night',  label: '🌙 Noche',  bg: '#141414', ink: '#E8E8E8' },
+                { key: 'sepia',  label: '📜 Sepia',  bg: '#F6F0E4', ink: '#3B2F1E' },
+                { key: 'forest', label: '🌲 Bosque', bg: '#1A2420', ink: '#C8D8C0' },
+                { key: 'custom', label: '🎨 Libre',  bg: 'conic-gradient(from 0deg, #FF9A9E, #FECFEF, #A8EDEA, #fed6e3, #FF9A9E)', ink: null },
+              ].map(t => (
+                <div key={t.key} className="settings-theme-option">
+                  <button
+                    className={`settings-theme-btn ${uiSettings.theme === t.key ? 'settings-theme-btn--active' : ''}`}
+                    style={{ background: t.bg }}
+                    onClick={() => updateUISetting('theme', t.key)}
+                  />
+                  <span className="settings-theme-label">{t.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {uiSettings.theme === 'custom' && (
+              <div className="settings-custom-colors">
+                <div className="color-picker-wrap">
+                  <label>Fondo</label>
+                  <input 
+                    type="color" className="color-picker-input" 
+                    value={uiSettings.customBg} 
+                    onChange={(e) => updateUISetting('customBg', e.target.value)} 
+                  />
+                </div>
+                <div className="color-picker-wrap">
+                  <label>Texto</label>
+                  <input 
+                    type="color" className="color-picker-input" 
+                    value={uiSettings.customText} 
+                    onChange={(e) => updateUISetting('customText', e.target.value)} 
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
