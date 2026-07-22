@@ -112,30 +112,91 @@ function buildChapters(elements) {
 }
 
 // ─── Algoritmo de Voces Premium ────────────────────────────────────────
-function getSpanishVoicesCategorized(allVoices) {
-  const esVoices = allVoices.filter(v => v.lang.startsWith("es"));
+const VOICE_MAP = {
+  // Español (Microsoft/Apple)
+  "paulina": "Paulina (México, Mujer)",
+  "sabina": "Sabina (México, Mujer)",
+  "jorge": "Jorge (España, Hombre)",
+  "monica": "Mónica (España, Mujer)",
+  "elena": "Elena (España, Mujer)",
+  "pablo": "Pablo (España, Hombre)",
+  "laura": "Laura (España, Mujer)",
+  "dalia": "Dalia (México, Mujer)",
+  
+  // Inglés (Microsoft/Apple/Google)
+  "samantha": "Samantha (USA, Mujer)",
+  "karen": "Karen (Australia, Mujer)",
+  "moira": "Moira (Irlanda, Mujer)",
+  "daniel": "Daniel (UK, Hombre)",
+  "tessa": "Tessa (Sudáfrica, Mujer)",
+  "aria": "Aria (USA, Mujer)",
+  "guy": "Guy (USA, Hombre)",
+  "jenny": "Jenny (USA, Mujer)",
+  "steffan": "Steffan (USA, Hombre)",
+  "ava": "Ava (USA, Mujer)",
+  "andrew": "Andrew (USA, Hombre)",
+  "emma": "Emma (USA, Mujer)",
+  "brian": "Brian (USA, Hombre)"
+};
+
+function getPremiumVoicesCategorized(allVoices) {
+  // 1. Filtrar voces en español e inglés y eliminar voces de broma (novelty) de Chrome/Mac
+  const noveltyVoices = ["eddy", "flo", "grandma", "grandpa", "reed", "rocko", "sandy", "shelley", "bells", "cellos", "good news", "pipe organ", "superstar", "trinoids", "whisper", "zarvox", "albert", "bad news", "bahh", "boing", "bubbles", "deranged", "hysterical", "junior", "princess", "ralph"];
+  
+  const targetVoices = allVoices.filter(v => {
+    const isLangMatch = v.lang.startsWith("es") || v.lang.startsWith("en");
+    const nameLower = v.name.toLowerCase();
+    const isNovelty = noveltyVoices.some(bad => nameLower.includes(bad));
+    return isLangMatch && !isNovelty;
+  });
+  
   const premiumKeywords = ["premium", "enhanced", "google", "online", "natural", "siri"];
   
-  const categorized = esVoices.map(v => {
+  const categorized = targetVoices.map(v => {
     const nameLower = v.name.toLowerCase();
-    const isPremium = premiumKeywords.some(keyword => nameLower.includes(keyword));
+    let isPremium = premiumKeywords.some(keyword => nameLower.includes(keyword));
     
     let label = v.name;
-    label = label.replace(/Microsoft |Online \(Natural\) - Spanish|Spanish \(.+\)|Voice/gi, "").trim();
-    if (label.endsWith("-")) label = label.slice(0, -1).trim();
+    
+    // Asignar nombre amigable si existe en el diccionario
+    let foundFriendlyName = false;
+    for (const [key, friendly] of Object.entries(VOICE_MAP)) {
+      if (nameLower.includes(key)) {
+        label = friendly;
+        foundFriendlyName = true;
+        isPremium = true; // Si es una voz conocida (ej: de Safari/Mac nativa), forzar a Premium
+        break;
+      }
+    }
+    
+    // Si no está en el diccionario, limpiar los textos basura
+    if (!foundFriendlyName) {
+      label = label.replace(/Microsoft |Online \(Natural\) - Spanish|Spanish \(.+\)|English \(.+\)|Voice/gi, "").trim();
+      if (label.endsWith("-")) label = label.slice(0, -1).trim();
+      
+      // Agregar indicador básico de idioma si no tiene un nombre amigable
+      if (v.lang.startsWith("es")) label += " (ES)";
+      else if (v.lang.startsWith("en")) label += " (EN)";
+    }
     
     return {
       voice: v,
       name: v.name,
       label: label,
       voiceName: v.name,
-      isPremium
+      isPremium,
+      langCode: v.lang.substring(0, 2)
     };
   });
 
+  // 3. Ordenar: Premium primero, luego por idioma (Español primero), luego por nombre
   categorized.sort((a, b) => {
     if (a.isPremium && !b.isPremium) return -1;
     if (!a.isPremium && b.isPremium) return 1;
+    
+    if (a.langCode === "es" && b.langCode !== "es") return -1;
+    if (a.langCode !== "es" && b.langCode === "es") return 1;
+    
     return a.label.localeCompare(b.label);
   });
 
@@ -197,9 +258,9 @@ function useNarrator({ elements, activeElementId, setActiveElementId, activeChap
     const loadVoices = () => {
       const available = window.speechSynthesis.getVoices();
       if (available.length > 0) {
-        const categorized = getSpanishVoicesCategorized(available);
-        // Limitar a las 10 mejores opciones para no saturar la UI
-        const topVoices = categorized.slice(0, 10);
+        const categorized = getPremiumVoicesCategorized(available);
+        // Limitar a las 15 mejores opciones para no saturar la UI (ahora incluye inglés)
+        const topVoices = categorized.slice(0, 15);
         setVoices(topVoices);
         // Seleccionar la primera voz premium (o la primera en general si no hay premium)
         if (topVoices.length > 0) {

@@ -1488,8 +1488,9 @@ img { max-width: 100%; display: block; }
   bottom: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%);
-  width: 320px;
-  max-width: 90vw;
+  width: auto;
+  min-width: 500px;
+  max-width: 95vw;
   border-radius: var(--radius-md);
   background: var(--white);
   border: 1px solid var(--border);
@@ -1537,22 +1538,25 @@ img { max-width: 100%; display: block; }
 }
 
 .narrator-voices {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
 }
 
 .narrator-voice-btn {
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--white);
   color: var(--ink-light);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .narrator-voice-btn:hover { border-color: var(--coral-light); color: var(--coral); background: rgba(123, 92, 250,0.04); }
 .narrator-voice-btn--active { border-color: var(--coral); background: rgba(123, 92, 250, 0.08); color: var(--coral); font-weight: 600; }
