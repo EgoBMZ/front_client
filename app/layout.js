@@ -18,9 +18,37 @@ const inter = Inter({
 
 export const metadata = {
   title: "AuraRead — Tu biblioteca digital",
-  description:
-    "Sube tus libros en PDF y léelos desde cualquier dispositivo. AuraRead recuerda en qué página quedaste.",
-  keywords: "lector, libros, PDF, biblioteca digital, leer online",
+  description: "Sube tus libros en PDF y léelos desde cualquier dispositivo. AuraRead recuerda en qué página quedaste.",
+  keywords: ["lector", "libros", "PDF", "biblioteca digital", "leer online", "audiolibros", "AuraRead"],
+  authors: [{ name: "AuraRead Team" }],
+  creator: "AuraRead",
+  openGraph: {
+    title: "AuraRead — Tu biblioteca digital inteligente",
+    description: "Transforma tus PDFs en libros digitales interactivos. Lee o escucha tus libros en cualquier dispositivo.",
+    url: "https://auraread.vercel.app",
+    siteName: "AuraRead",
+    images: [
+      {
+        url: "/landing-hero-purple.png",
+        width: 1200,
+        height: 630,
+        alt: "AuraRead - Biblioteca Digital",
+      },
+    ],
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AuraRead — Tu biblioteca digital",
+    description: "Sube tus libros en PDF y léelos desde cualquier dispositivo.",
+    images: ["/landing-hero-purple.png"],
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }) {
