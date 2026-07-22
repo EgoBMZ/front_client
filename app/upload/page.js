@@ -211,17 +211,19 @@ function UploadContent() {
           </>
         )}
 
-        {/* Progress bar */}
+        {/* Progress Animation */}
         {isProcessing && (
-          <>
-            <div className="upload-progress-bar" style={{ marginTop: 28 }}>
-              <div
-                className="upload-progress-fill"
-                style={{ width: `${progress}%` }}
-              />
+          <div style={{ marginTop: 24 }}>
+            <div className="scanner-container">
+              <div className="scanner-icon">📖</div>
+              <div className="scanner-laser"></div>
+              <div className="scanner-overlay"></div>
             </div>
             <p className="upload-status-msg">{statusMsg}</p>
-          </>
+            <p style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--ink-muted)", marginTop: 4 }}>
+              {Math.round(progress)}% completado
+            </p>
+          </div>
         )}
       </div>
 
